@@ -143,11 +143,11 @@ clear.addEventListener('click', async function() {
 
 async function createCommand(json, key_string) {
     const metadata = JSON.parse(json);
-    const headerString = Object.entries(metadata.headers).map(([key, value]) => `-H "${key}: ${value.replace(/"/g, "'")}"`).join(' ');
+    const headerString = Object.entries(metadata.headers).map(([key, value]) => `-H '${key}: ${value.replace(/'/g, '"')}'`).join(' ');
     const executableName = await SettingsManager.getExecutableName();
     const useShaka = await SettingsManager.getUseShakaPackager();
     const additionalArgs = await SettingsManager.getAdditionalArguments();
-    return `${executableName} "${metadata.url}" ${headerString} ${key_string} ${useShaka ? "--use-shaka-packager " : ""}${additionalArgs}`;
+    return `${executableName} '${metadata.url}' ${headerString} ${key_string} ${useShaka ? "--use-shaka-packager " : ""}${additionalArgs}`;
 }
 
 async function appendLog(result) {
