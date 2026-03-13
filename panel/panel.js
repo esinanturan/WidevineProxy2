@@ -123,6 +123,11 @@ use_shaka.addEventListener('change', async function (){
     await SettingsManager.saveUseShakaPackager(use_shaka.checked);
 });
 
+const use_single_quotes = document.getElementById('use-single-quotes');
+use_single_quotes.addEventListener('change', async function (){
+    await SettingsManager.saveUseSingleQuotes(use_single_quotes.checked);
+});
+
 const downloader_name = document.getElementById('downloader-name');
 downloader_name.addEventListener('input', async function (){
     await SettingsManager.saveExecutableName(downloader_name.value);
@@ -143,11 +148,20 @@ clear.addEventListener('click', async function() {
 
 async function createCommand(json, key_string) {
     const metadata = JSON.parse(json);
-    const headerString = Object.entries(metadata.headers).map(([key, value]) => `-H '${key}: ${value.replace(/'/g, '"')}'`).join(' ');
+
+    // Based on user choice in the panel, we have the quote character that should be used in the command,
+    // and a safe quote character that can be used to format the header values.
+    const useSingleQuotes = await SettingsManager.getUseSingleQuotes();
+    const quoteChar = useSingleQuotes ? "'" : '"';
+    const safeQuoteChar = useSingleQuotes ? '"' : "'";
+    const headerString = Object.entries(metadata.headers).map(
+        ([key, value]) => `-H ${quoteChar}${key}: ${value.replaceAll(quoteChar, safeQuoteChar)}${quoteChar}`
+    ).join(' ');
+
     const executableName = await SettingsManager.getExecutableName();
     const useShaka = await SettingsManager.getUseShakaPackager();
     const additionalArgs = await SettingsManager.getAdditionalArguments();
-    return `${executableName} '${metadata.url}' ${headerString} ${key_string} ${useShaka ? "--use-shaka-packager " : ""}${additionalArgs}`;
+    return `${executableName} ${quoteChar}${metadata.url}${quoteChar} ${headerString} ${key_string} ${useShaka ? "--use-shaka-packager " : ""}${additionalArgs}`;
 }
 
 async function appendLog(result) {
@@ -249,6 +263,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     enabled.checked = await SettingsManager.getEnabled();
     SettingsManager.setDarkMode(await SettingsManager.getDarkMode());
     use_shaka.checked = await SettingsManager.getUseShakaPackager();
+    use_single_quotes.checked = await SettingsManager.getUseSingleQuotes();
     downloader_name.value = await SettingsManager.getExecutableName();
     downloader_args.value = await SettingsManager.getAdditionalArguments();
     SettingsManager.setSelectedDeviceType(await SettingsManager.getSelectedDeviceType());
