@@ -97,7 +97,11 @@
 
             await emitAndWaitForResponse("RESPONSE", b64.encode(args[0]))
 
-            return await target.apply(thisArg, args);
+            try {
+                return await target.apply(thisArg, args);
+            } catch (e) {
+                // ignored, since this will always fail
+            }
         });
     }
 
