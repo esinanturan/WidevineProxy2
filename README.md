@@ -1,79 +1,99 @@
 # WidevineProxy2
-An extension-based proxy for Widevine EME challenges and license messages. \
+An extension-based proxy for Widevine/ClearKey EME challenges and license messages. \
 Modifies the challenge before it reaches the web player and retrieves the decryption keys from the response.
 
 ## Features
 + User-friendly / GUI-based
 + Bypasses one-time tokens, hashes, and license wrapping
 + JavaScript native Widevine implementation
-+ Supports Widevine Device files
++ Supports Widevine Device files and remote CDMs
++ Key history and DRM status display
 + Manifest V3 compliant
 
-## Widevine Devices
-This addon requires a Widevine Device file to work, which is not provided by this project.
-+ Use an existing Remote CDM like [this one](https://github.com/user-attachments/files/21834836/remote.json)
+## Prerequisites
+This addon requires a Widevine device to work, either locally or remotely:
++ Use an existing Remote CDM
 + Follow [this](https://forum.videohelp.com/threads/408031) guide if you want to dump your own device.
 + Ready-to-use Widevine Devices can be found on the [VideoHelp forum](https://forum.videohelp.com/forums/48).
 
-## Compatibility
-+ Compatible (tested) browsers: Firefox/Chrome on Windows/Linux.
-+ Works with any service that accepts challenges from Android devices on the same endpoint.
-
 ## Installation
 + Chrome
-  1. Download the ZIP file from the [releases section](https://github.com/DevLARLEY/WidevineProxy2/releases)
-  2. Navigate to `chrome://extensions/`
-  3. Enable `Developer mode`
-  4. Drag-and-drop the downloaded file into the window
-+ Firefox
-  + Persistent installation
-    1. Download the XPI file from the [releases section](https://github.com/DevLARLEY/WidevineProxy2/releases)
-    2. Navigate to `about:addons`
-    3. Click the settings icon and choose `Install Add-on From File...`
-    4. Select the downloaded file
-  + Temporary installation
     1. Download the ZIP file from the [releases section](https://github.com/DevLARLEY/WidevineProxy2/releases)
-    2. Navigate to `about:debugging#/runtime/this-firefox`
-    3. Click `Load Temporary Add-on...` and select the downloaded file
+    2. Navigate to `chrome://extensions/`
+    3. Enable `Developer mode`
+    4. Drag-and-drop the downloaded file into the window
++ Firefox
+    + Persistent installation
+        1. Download the XPI file from the [releases section](https://github.com/DevLARLEY/WidevineProxy2/releases)
+        2. Navigate to `about:addons`
+        3. Click the settings icon and choose `Install Add-on From File...`
+        4. Select the downloaded file
+    + Temporary installation
+        1. Download the ZIP file from the [releases section](https://github.com/DevLARLEY/WidevineProxy2/releases)
+        2. Navigate to `about:debugging#/runtime/this-firefox`
+        3. Click `Load Temporary Add-on...` and select the downloaded file
 
-## Setup
-### Widevine Device
+### Setup
+Select your device type in the popup window and follow the steps for either type below
+
+#### Local Widevine device
 If you only have a `device_client_id_blob` and `device_private_key`, run this command to create a .wvd file:
 ```
 pywidevine create-device -k device_private_key -c device_client_id_blob -t "ANDROID" -l 3
 ```
-Now, open the extension, click `Choose File` and select your Widevine Device file.
+Open the dropdown and click `+ Choose File`, in the window that opens, click `Choose File` again and select the created `.wvd` file.
 
-### Remote CDM
-If you don't already have a `remote.json` file, open the API URL in the browser (if provided) and save the response as `remote.json`. \
-Now, open the extension, click `Choose remote.json` and select the JSON file provided by your API.
-
-
-+ Select the type of device you're using in the top right-hand corner
-+ The files are saved in the extension's `chrome.storage.sync` storage and will be synchronized across any browsers into which the user is signed in with their Google account.
-+ The maximum number of Widevine devices is ~25 **OR** ~200 Remote CDMs
-+ Check `Enabled` to activate the message interception and you're done.
+#### Remote Widevine CDM
+Open the dropdown and click `+ Choose File`, in the window that opens, click `Choose File` again and select the supplied `remote.json` file.
 
 ## Usage
-All the user has to do is to play a DRM protected video and the decryption keys should appear in the `Keys` group box (if the service is not unsupported, as stated above). \
-Keys are saved:
-+ Temporarily until the extension is either refreshed manually (if installed temporarily) or a removal of the keys is manually initiated.
-+ Permanently in the extension's `chrome.storage.local` storage until manually wiped or exported via the command line.
-> [!NOTE]  
-> The video will not play when the interception is active, as the Widevine CDM library isn't able to decrypt the Android CDM license.
+Once you've at least installed one Widevine device, play a video on a page that you think uses Widevine DRM and the keys should in the `Keys` section. \
+This section only shows the most recent keys (past 5 min.), to see all keys, click `History` on the right to open the history page. 
 
-+ Click the `+` button to expand the section to reveal the PSSH and keys.
+### DRM status display
+| Name        | Activated by                                                             |
+|-------------|--------------------------------------------------------------------------|
+| `MediaKeys` | `MediaKeySystemAccess.createMediaKeys()` called                          |
+| `Session`   | `MediaKeys.createSession()` called                                       |
+| `Generated` | `MediaKeySession.generateRequest()` called                               |
+| `Challenge` | `MediaKeyMessageEvent` occurred with `.message.byteLength > 2`           |
+| `License`   | `MediaKeySession.update()` called with `SignedMessage` of type `LICENSE` |
 
-## FAQ
-> What if I'm unable to get the keys?
+### Issue debug table
+The table below does not cover 100% of cases but is accurate enough.
 
-This automatically means that the license server is blocking your CDM and that you either need a CDM from a physical device, a ChromeCDM, or an L1 Android CDM. Don't ask where you can get these
+| Keys appear | Video plays | DRM status                                                                                                                  | Possible cause                        | Possible fix                                                  |
+|-------------|-------------|-----------------------------------------------------------------------------------------------------------------------------|---------------------------------------|---------------------------------------------------------------|
+| No          | Yes         | ![](https://placehold.co/15x15/FFFFFF/FFFFFF.png) `Challenge` / ![](https://placehold.co/15x15/FFFFFF/FFFFFF.png) `License` | The page does not use DRM             |                                                               |
+| No          | Yes         | ![](https://placehold.co/15x15/3D8B3D/3D8B3D.png) `Challenge` / ![](https://placehold.co/15x15/FFFFFF/FFFFFF.png) `License` | Unable to intercept messages          | Try using proxy mode `property`, <br> otherwise open an issue |
+| No          | No          | ![](https://placehold.co/15x15/FFFFFF/FFFFFF.png) `Challenge` / ![](https://placehold.co/15x15/FFFFFF/FFFFFF.png) `License` | Unknown, likely unrelated to addon    |                                                               |
+| No          | No          | ![](https://placehold.co/15x15/3D8B3D/3D8B3D.png) `Challenge` / ![](https://placehold.co/15x15/FFFFFF/FFFFFF.png) `License` | Endpoint does not accept Android CDMs | (see below)                                                   |
 
-## Issues
-+ DRM playback won't work when the extension is disabled and EME Logger is active. This is caused by my fix for dealing with EME Logger interference (solutions are welcome).
+If the license endpoint has been configured to only accept Android CDMs, you need to either:
++ Try using WidevineProxy2 on an Android device
++ Use a Chrome remote CDM
 
-## Demo
+## Demo (of pre v1)
 [Widevineproxy2.webm](https://github.com/user-attachments/assets/8f51cee3-50e2-4aa4-b244-afa2d0b2987e)
+
+## Building
+
+### Bundle
+If you just want to run this addon locally with changes applied, run `npm run bundle`. \
+Now select the `src` directory (or a file there within) to install the addon temporarily. 
+
+### Package
+Create the following `.env` file with [Mozilla addon dev credentials](https://addons.mozilla.org/en-US/developers/addon/api/key/) in the root directory:
+```
+API_KEY=...
+API_SECRET=...
+```
+
+To package the previously created bundles into a single .zip/.xpi file, run `npm run package`. To target only a specific browser, specify the type like this: `npm run package -- <chrome/firefox/both>`. Supplying no arguments targets both. \
+This requires the bundles to be present, so it must not be run on its own.
+
+### Publish
+Running `npm run publish` will execute both `bundle` and `package`.
 
 ## Disclaimer
 + This program is intended solely for educational purposes.
