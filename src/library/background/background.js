@@ -39,8 +39,8 @@ async function setIsOutdated() {
     console.log("latest", lastestVersion, "current", currentVersion);
 
     isOutdated =
-        parseInt(lastestVersion.replace(".", "")) >
-        parseInt(currentVersion.replace(".", ""));
+        parseInt(lastestVersion.replaceAll(".", "")) >
+        parseInt(currentVersion.replaceAll(".", ""));
 }
 
 let registrationPromise = null;
