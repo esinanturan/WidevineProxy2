@@ -17,7 +17,11 @@ function checkForManifest(body, url) {
 const xhrBodyExtractors = {
     "": (xhr) => xhr.responseText || xhr.response || null,
     text: (xhr) => xhr.responseText || xhr.response || null,
-    json: (xhr) => (xhr.response != null ? JSON.stringify(xhr.response) : null),
+    json: (xhr) => {
+        if (xhr.response == null)
+            return null;
+        return typeof xhr.response === "string" ? xhr.response : JSON.stringify(xhr.response);
+    },
     arraybuffer: (xhr) => Util.decodeArrayBuffer(xhr.response),
     blob: (xhr) => Util.blobToText(xhr.response),
     document: (xhr) =>
@@ -44,11 +48,15 @@ Util.proxy(XMLHttpRequest.prototype, "open", (target, thisArg, args) => {
 
 Util.proxy(XMLHttpRequest.prototype, "send", (target, thisArg, args) => {
     thisArg.addEventListener("readystatechange", async () => {
-        if (thisArg.requestMethod !== "GET" || thisArg.readyState !== 4)
+        if (thisArg.readyState !== 4)
             return;
 
-        const body = await extractXHRBody(thisArg);
-        checkForManifest(body, thisArg.responseURL);
+        try {
+            const body = await extractXHRBody(thisArg);
+            checkForManifest(body, thisArg.responseURL);
+        } catch (err) {
+            console.error("[WVP2]", "XHR manifest extraction failed:", err);
+        }
     });
 
     return target.apply(thisArg, args);
@@ -58,14 +66,15 @@ Util.proxy(window, "fetch", async (target, thisArg, args) => {
     // this failing causes the exception to show up in the extension logs, but catching the error would make it worse
     const response = await target.apply(thisArg, args);
 
-    const request = args[0];
-    const method = (
-        args[1]?.method ?? (request instanceof Request ? request.method : "GET")
-    ).toUpperCase();
+    try {
+        const request = args[0];
+        const url = response.url || (typeof request === "string" ? request : request?.url);
 
-    if (method === "GET") {
-        const url = response.url || (typeof request === "string" ? request : request.url);
-        extractFetchBody(response).then((body) => checkForManifest(body, url));
+        extractFetchBody(response)
+            .then((body) => checkForManifest(body, url))
+            .catch((err) => console.debug("Fetch manifest extraction failed:", err));
+    } catch (err) {
+        console.debug("Fetch manifest intercept failed:", err);
     }
 
     return response;

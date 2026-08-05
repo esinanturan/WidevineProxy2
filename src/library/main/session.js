@@ -62,6 +62,8 @@ export class Session {
             throw new Error(`Cannot resign message of type ${signedMessage.type}`);
         }
 
+        delete signedMessage.oemcryptoCoreMessage;
+
         const licenseRequest = LicenseRequest.decode(signedMessage.msg);
 
         delete licenseRequest.encryptedClientId;

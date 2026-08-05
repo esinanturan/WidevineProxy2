@@ -233,7 +233,7 @@ if (typeof MediaKeySession !== "undefined") {
                     return serverCert;
                 }
             }
-            return sessionServerCertMap.get(_this?.session);
+            return sessionServerCertMap.get(_this);
         }
 
         const resignChallenge = async (message, serverCert) => {
@@ -266,12 +266,15 @@ if (typeof MediaKeySession !== "undefined") {
                 args: Util.safeStringify(e.message)
             });
 
-            const serverCert = getServerCert(_this);
+            const serverCert = getServerCert(type === "object" ? _thisTarget : _this);
             const newChallenge = await resignChallenge(e.message, serverCert);
 
             if (!newChallenge) {
                 return;
             }
+
+            console.log("[WVP2]", "New challenge:", Util.b64.encode(newChallenge));
+            console.log("[WVP2]", frameId, `Intercepted (${settings.proxy_mode}/${type})`, _args[0]);
 
             if (settings.proxy_mode === "property") {
                 Object.defineProperty(e, "message", {
@@ -288,23 +291,23 @@ if (typeof MediaKeySession !== "undefined") {
                 e.preventDefault();
 
                 _thisTarget.dispatchEvent(clonedEvent);
+                return true;
+                // true = we stop here because the dispatched event above will trigger the handler on its own
             }
-
-            console.log("[WVP2]", frameId, `Intercepted (${settings.proxy_mode}/${type})`, _args[0]);
         }
 
         const wrapListener = (listener, _thisTarget) => {
             if (typeof listener === "function") {
                 return new Proxy(listener, {
                     async apply(_target, _this, _args) {
-                        await interceptChallenge(_args, _this, _thisTarget, "function");
-                        return Reflect.apply(_target, _this, _args);
+                        if (!(await interceptChallenge(_args, _this, _thisTarget, "function")))
+                            return Reflect.apply(_target, _this, _args);
                     }
                 });
             } else if (typeof listener === "object" && typeof listener.handleEvent === "function") {
                 Util.proxy(listener, "handleEvent", async (_target, _this, _args) => {
-                    await interceptChallenge(_args, _this, _thisTarget, "object");
-                    return Reflect.apply(_target, _this, _args);
+                    if (!(await interceptChallenge(_args, _this, _thisTarget, "object")))
+                        return Reflect.apply(_target, _this, _args);
                 });
             }
             return listener;

@@ -128,22 +128,30 @@ export class Util {
     }
 
     static decodeArrayBuffer(buffer) {
-        if (!buffer || buffer.byteLength === 0 || buffer.byteLength >= 1_000_000) {
+        if (!buffer || buffer.byteLength === 0)
             return null;
-        }
+
         const arr = new Uint8Array(buffer);
         const decoder = new TextDecoder('utf-8', { fatal: false });
-        return arr.length <= 2000
+
+        return arr.length <= 4000
             ? decoder.decode(arr)
-            : decoder.decode(arr.slice(0, 1000)) + decoder.decode(arr.slice(-1000));
+            : decoder.decode(arr.slice(0, 2000)) + decoder.decode(arr.slice(-2000));
     }
 
     static async blobToText(blob) {
         if (!blob)
             return null;
+
         const isTextLike = blob.type.startsWith('text/') || blob.type.includes('xml') || blob.type.includes('json');
-        if (!isTextLike && blob.size >= 100_000)
+
+        if (!isTextLike && blob.size >= 2_000_000)
             return null;
-        return blob.text();
+        if (blob.size <= 4000)
+            return blob.text();
+
+        const head = await blob.slice(0, 2000).text();
+        const tail = await blob.slice(-2000).text();
+        return head + tail;
     }
 }
