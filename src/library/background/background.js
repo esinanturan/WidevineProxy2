@@ -244,4 +244,6 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 setTimeout(() => {
     ensureScriptsRegistered();
     setIsOutdated();
+    setInterval(setIsOutdated, 12 * 60 * 60 * 1000); // 12 hours
 }, 1000);
+

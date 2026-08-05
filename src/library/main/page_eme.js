@@ -204,7 +204,7 @@ if (typeof MediaKeys !== "undefined") {
     Util.proxy(MediaKeys.prototype, "setServerCertificate", async (_target, _this, _args) => {
         console.log("[WVP2]", frameId, "Server Cert (setServerCertificate):", parseServerCert(_args[0]));
         const result = await _target.apply(_this, _args);
-        mediaKeysServerCertMap.set(_this, _args[0]);
+        mediaKeysServerCertMap.set(_this, new Uint8Array(_args[0]));
         return result;
     });
 
